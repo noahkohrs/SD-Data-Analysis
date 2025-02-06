@@ -1,41 +1,56 @@
+---
+title: "Analyse des Données NPHA"
+author: "Anastasios Tsiompanidis et Noah Kohrs"
+date: "`r Sys.Date()`"
+---
+
 # National Poll on Healthy Aging (NPHA)
 
 ## Auteurs du Projet
 [Anastasios Tsiompanidis](anastasios.tsiompanidis@etu.univ-grenoble-alpes.fr)
 [Noah Kohrs](noah.kohrs@etu.univ-grenoble-alpes.fr)
 
-
 ## 1- Motivation et Positionnement du Projet
-L'objectif de cette analyse est de développer et de valider des algorithmes de machine learning capables de prédire le nombre de médecins consultés par une personne âgée au cours d'une année, en se basant sur un sous-ensemble filtré des données du National Poll on Healthy Aging (NPHA). Ce projet est crucial pour comprendre les besoins spécifiques des seniors en matière de santé et pour fournir des informations utiles aux prestataires de soins, aux décideurs politiques et aux défenseurs des intérêts des personnes âgées. Cette étude contribue à une meilleure gestion des ressources médicales et à l'amélioration des politiques publiques axées sur le vieillissement.
+Ce travail est basé sur le ["National Poll on Healthy Aging" (NPHA)](https://archive.ics.uci.edu/dataset/936/national+poll+on+healthy+aging+(npha)), une enquête menée auprès de personnes âgées pour évaluer leur état de santé et leurs besoins en matière de soins médicaux.
+
+<... Introduction ...>
+
+On précharge les librairies nécessaires pour l'analyse des données:
+```{r, message=FALSE, warning=FALSE}
+library(cluster)
+library(rpart)
+```
 
 ## 2- Analyse descriptive 
+Une première lecture des données nous donne un aperçu des valeurs uniques pour chaque variable, ce qui nous permet de détecter d'éventuels problèmes de labellisation ou de valeurs manquantes.
 ```{r}
-npha <- read.csv("C:/Users/noah/Documents/AAACode/SD/Project/NPHA-doctor-visits.csv")
+npha <- read.csv("NPHA-doctor-visits.csv")
 summary(npha)
 ```
 
-Comme nos valeurs sont des catégorielles représentées par des chiffres, on va les remplacer par des labels pour une meilleure compréhension.
+Comme nos valeurs sont catégorielles représentées par des chiffres, on va les remplacer par des labels pour une meilleure compréhension.
 
-On va d'abord définir les labels pour chaque variable catégorielle.
-
-Note: Le dataset utilisé possède un certain nombre d'erreurs dans le labelling qu'il fourni qui nous oblige à le réarranger.
+Cependant, le dataset utilisé contient plusieurs erreurs de labellisation, ce qui nous oblige à les corriger. Nous avons essayé dee faire au plus mieux pour rester cohérent avec les valeurs existantes.
 ```{r}
-doctor_labels <- c("0-1", "2-3", "4 or more")
+doctor_labels <- c("0-1", "2-3", "4+")
 age_labels <- c("50-64", "65-80")
 
-# On a ajouté la valeur "Very Poor" nous mêmes car il n'y avait pas de labelling indiqué pour la valeur 6. 
-# Celà suit la logique et nous évite la présence de NA's 
+# On a ajouté la valeur "Very Poor" nous mêmes car il n'y avait
+# pas de labelling indiqué pour la valeur 6. 
+# Cela suit la logique et nous évite la présence de NA's 
 health_labels <- c("Refused", "Excellent", "Very Good", "Good", "Fair", "Poor", "Very Poor")
 empl_labels <- c("Refused", "Full-time", "Part-time", "Retired", "Not working")
 yes_no_labels <- c("No", "Yes")
 gender_labels <- c("M", "F")
 medication_labels <- c("Refused", "Use regularly", "Use occasionally", "Do not use")
 
-# It is supposed tob e No and yes; but the dataset is wrongly labeled here. 
-# We will assume these are the correct labels
+# Les valeurs devraient être "No" et "Yes", mais elles sont mal labellisées dans le dataset.
+# Nous supposons que ces corrections sont appropriées.
 sleep_labels <- c("Refused", "No", "A bit", "Yes")
 race_labels <- c("Not asked", "Refused", "White", "Black", "Other", "Hispanic", "2+ Races")
 ```
+
+Enfin, on utilise ces labels pour remplacer les valeurs existantes dans le dataset.
 
 ```{r}
 colnames(npha)
@@ -62,59 +77,82 @@ On obtient:
 summary(npha)
 ```
 
-On observe que l'age des patients est toujours entre 65 et 80 ans, il s'agit donc d'une variable constante sur notre jeu de données. 
-Nous allons donc l'écarter de la suite de l'analyse car cela ne nous fourni aucune information utile.
+Ce resumé est bien plus parlant et nous permet de mieux comprendre les données que nous avons à disposition.
 
-On fait alors:
+On observe par ailleurs que l'age des patients est toujours entre 65 et 80 ans, il s'agit donc d'une constante sur notre jeu de données. 
+Nous allons donc écarter la variable de la suite de l'analyse car cela ne nous fournit aucune information utile et nuit la la lisibilité.
+
 ```{r}
 npha <- npha[, c(1, 3:ncol(npha))]
-# On vérifie que tout s'est bien passé
+# On vérifie que l'age a bien été supprimé.
 colnames(npha)
 ```
-
-On observe également que la variable Dental.Health contient des valeurs inconnues qui ne sont associées à aucun label. 
-Nous allons donc les remplacer par des valeurs manquantes.
 
 Essayons d'avoir une vue d'ensemble de nos données.
 ```{r}
 plot(npha)
 ```
-Comme attendu, c'est indigeste en vu du nombre de variables présentes dans le jeun de donnée.
+Comme attendu, c'est indigeste en vu du nombre de variables présentes dans le jeu de données ainsi que de la présence excessive de variables catégorielles et non numériques.
 
 On va donc essayer de voir les relations entre les variables et le nombre de visites chez le médecin.
 
 ```{r}
 
 par(mfrow = c(2, 2))
-# boxplot(split(npha$Number.of.Doctors.Visited, npha$Age), main = "Number of Doctors Visited by Age Group")
-# Ceci même si en théorie est intéressant, ne donne pas de résultats utiles car on a seulement 1 variable qui existe dans la base de données
-
 boxplot(split(npha$Number.of.Doctors.Visited, npha$Employment), main = "Number of Doctors Visited by Employement Group")
-boxplot(split(npha$Number.of.Doctors.Visited, npha$Physical.Health), main = "Number of Doctors Visited by Physical Health")   
+boxplot(split(npha$Number.of.Doctors.Visited, npha$Physical.Health), main = "Number of Doctors Visited by Physical Health")
 boxplot(split(npha$Number.of.Doctors.Visited, npha$Mental.Health), main = "Number of Doctors Visited by Mental Health")
 boxplot(split(npha$Number.of.Doctors.Visited, npha$Dental.Health), main = "Number of Doctors Visited by Dental Health")
 ```
 
 ## 3- Classification non supervisée :
+On effectue une analyse de regroupement hiérarchique et un clustering PAM pour segmenter 
+les données sans inclure la variable cible, puis on visualise les résultats de chaque méthode.
 ```{r}
 par(mfrow = c(1, 1))
-library(cluster)
-### Suppression de la variable cible (Number.of.Doctors.Visited)
+# Suppression de la variable cible (Number.of.Doctors.Visited)
 npha_sans_visites <- npha[, -1]
 summary(npha_sans_visites)
+```
 
+<...>
+```{r}
 dist_matrix <- daisy(npha_sans_visites[, -ncol(npha_sans_visites)])
 hclust_result <- hclust(dist_matrix)
 plot(hclust_result)
+```
 
+<...>
+```{r}
 pam_result <- pam(npha_sans_visites[, -ncol(npha_sans_visites)], k = 2)
 plot(pam_result)
 ```
 
-## 4- Classification supervisée :
+### Interprétation du graphique de clustering PAM
+Le graphique de clustering PAM met en évidence deux groupes principaux parmi les observations. 
+Cependant, la séparation entre ces clusters n'est pas nette, indiquant une certaine 
+hétérogénéité au sein des groupes. L'explication de la variance à hauteur de 31,54 % suggère 
+que les deux premières composantes principales ne capturent qu'une partie limitée des informations 
+contenues dans les données. Cette faible variance implique que d'autres dimensions pourraient 
+être nécessaires pour mieux différencier les groupes. De plus, la dispersion des points montre 
+que certains individus sont proches de la frontière entre les clusters, suggérant que les variables 
+choisies ne permettent pas de segmenter clairement la population analysée.
+
+### Interprétation du Silhouette Plot
+Le Silhouette Plot révèle une cohésion interne relativement faible des clusters, avec une valeur 
+moyenne de 0,17. Ce score indique que de nombreuses observations se situent à la limite de leur 
+groupe, ce qui traduit une séparation imparfaite entre les clusters. En particulier, le premier 
+cluster présente une silhouette moyenne plus basse, ce qui signifie que ses individus sont plus 
+dispersés et donc moins homogènes. À l'inverse, le second cluster semble mieux défini, bien que 
+sa cohésion reste modérée. Globalement, ces résultats suggèrent que le choix du nombre de clusters 
+pourrait être optimisé ou que certaines variables devraient être réévaluées pour améliorer la qualité 
+de la classification.
+
+## 4- Classification supervisée:
+
+On commence par récuperer les indices pour chaque catégorie de la variable cible.
+On a observé qu'aucune classe ne justifierait un sous-échantillonage pour maximiser la classe.
 ```{r}
-library(rpart)
-# Indices pour chaque catégorie
 # Ici aucun class est assez rare pour faire un max d'une classe
 
 indices_1 <- which(npha$Number.of.Doctors.Visited == "0-1")
@@ -124,22 +162,32 @@ indices_3 <- which(npha$Number.of.Doctors.Visited == "4 or more")
 sample_1 <- sample(indices_1, round(0.6 * length(indices_1), digits = 0))
 sample_2 <- sample(indices_2, round(0.6 * length(indices_2), digits = 0))
 sample_3 <- sample(indices_3, round(0.6 * length(indices_3), digits = 0))
-
 sub <- c(sample_1, sample_2, sample_3)
-length(sample_1)
-length(indices_1)
-length(sample_2)
-length(sample_3)
-all(sub %in% 1:nrow(npha))  # Should return TRUE
+```
 
+Voir la longueur des indices permet de vérifier la taille de chaque
+sous-ensemble de données, ce qui est crucial pour évaluer si chaque
+catégorie est suffisamment représentée.
+```{r}
+length(indices_1)
+length(indices_2)
+length(indices_3)
+```
+
+On entraîne un modèle de classification rpart sur un sous-ensemble de 
+données et on évalue ses prédictions en comparant les résultats sur un 
+jeu de test excluant ces mêmes indices.
+```{r}
 fit <- rpart(npha$Number.of.Doctors.Visited ~ ., data = npha, subset = sub)
 fit
 plot(fit)
 res <- table(predict(fit, npha[-sub, ], type = "class"), npha[-sub, "Number.of.Doctors.Visited"])
 res
-err <- (1 - sum(diag(res)) / sum(res)) * 100
-print("Le taux d'erreur est de : ")
-print(err)
 ```
 
-#Daisy | PAM CAH
+On calcule le taux d'erreur du modèle en comparant les prédictions 
+correctes aux résultats totaux, puis on l'affiche sous forme de pourcentage.
+```{r}
+err <- (1 - sum(diag(res)) / sum(res)) * 100
+cat("Le taux d'erreur est de :", err, "%\n")
+```
