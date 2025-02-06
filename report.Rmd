@@ -13,7 +13,7 @@ date: "`r Sys.Date()`"
 ## 1- Motivation et Positionnement du Projet
 Ce travail est basé sur le ["National Poll on Healthy Aging" (NPHA)](https://archive.ics.uci.edu/dataset/936/national+poll+on+healthy+aging+(npha)), une enquête menée auprès de personnes âgées pour évaluer leur état de santé et leurs besoins en matière de soins médicaux.
 
-<... Introduction ...>
+Notre analyse s'appuyera principalement sur la recherche de corrélation entre le nombre de visites chez le médecin d'un patient et ses caractéristiques exprimés par le reste des variables.
 
 On précharge les librairies nécessaires pour l'analyse des données:
 ```{r, message=FALSE, warning=FALSE}
@@ -115,14 +115,12 @@ npha_sans_visites <- npha[, -1]
 summary(npha_sans_visites)
 ```
 
-<...>
 ```{r}
 dist_matrix <- daisy(npha_sans_visites[, -ncol(npha_sans_visites)])
 hclust_result <- hclust(dist_matrix)
 plot(hclust_result)
 ```
 
-<...>
 ```{r}
 pam_result <- pam(npha_sans_visites[, -ncol(npha_sans_visites)], k = 2)
 plot(pam_result)
