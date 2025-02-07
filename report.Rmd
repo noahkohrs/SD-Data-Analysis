@@ -6,6 +6,7 @@ date: "`r Sys.Date()`"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(cache = TRUE)
+set.seed(43)
 ```
 
 # National Poll on Healthy Aging (NPHA)
@@ -256,7 +257,7 @@ score de silhouette faible (0,17), suggérant une séparation imparfaite des
 groupes. Les individus ne se distinguent pas nettement en fonction des variables étudiées, 
 ce qui remet en question leur pertinence pour la prédiction du comportement médical.
 
-De plus, le modèle supervisé testé a affiché un taux d'erreur élevé (66.13475 % / 51.92982 %), confirmant 
+De plus, le modèle supervisé testé a affiché un taux d'erreur élevé (65.60284 % / 50.17544 %), confirmant 
 la difficulté à établir une relation fiable entre les caractéristiques des patients et 
 leur fréquence de consultation. Aucune variable ne semble exercer une influence prédictive 
 suffisante pour permettre une classification efficace. Additionnellement, le fait qu'un données d'entrainement 
