@@ -164,7 +164,8 @@ de la classification.
 ## 4- Classification supervisée:
 
 On commence par récuperer les indices pour chaque catégorie de la variable cible.
-On a observé qu'aucune classe ne justifierait un sous-échantillonage pour maximiser la classe.
+On a observé que bien qu'il n'y ait aucune classe extrémement rare, leur distribution n'est pas équilibrée.
+On essaie donc dans un premier temps avec un échantillon de 50 observations par classe pour voir si le modèle arrive à prédire correctement les classes.
 ```{r}
 # Ici aucun class est assez rare pour faire un max d'une classe
 
@@ -178,9 +179,7 @@ sample_3 <- sample(indices_3, 50)
 sub <- c(sample_1, sample_2, sample_3)
 ```
 
-Voir la longueur des indices permet de vérifier la taille de chaque
-sous-ensemble de données, ce qui est crucial pour évaluer si chaque
-catégorie est suffisamment représentée.
+On vérifie ici qu'une des classes n'est pas trop sous-représentée.
 ```{r}
 length(indices_1)
 length(indices_2)
@@ -238,16 +237,17 @@ err <- (1 - sum(diag(res)) / sum(res)) * 100
 cat("Le taux d'erreur est de :", err, "%\n")
 ```
 
+
 Les résultats montrent que l'entraînement avec un échantillonnage proportionnel 
 réduit significativement le taux d'erreur par rapport à un échantillonnage fixe. 
-Cela confirme que respecter la distribution naturelle des données permet au modèle 
-de mieux généraliser et d'éviter un apprentissage biaisé par une répartition 
-artificielle des classes.
+Toutefois, cela ne confirme pas que respecter la distribution naturelle des données permet au modèle 
+de mieux généraliser car étant donné que le taux d'erreur reste très élevé, il est très probable que cette baisse soit en fait due à une 
+sur-représentation des classes majoritaires dans l'échantillon d'entraînement, ce qui entraine une baisse artificielle du taux d'erreur en biaisant le modèle.
 
 ## Conclusion:
 
-Les résultats de l'étude montrent que les variables analysées n'expliquent pas 
-suffisamment le nombre de consultations médicales des personnes âgées. Les tentatives 
+Les résultats de l'étude montrent que les variables analysées nee semblent pas expliquer
+le nombre de consultations médicales des personnes âgées. Les tentatives 
 de classification ont révélé une segmentation peu claire des groupes, avec une 
 faible cohésion interne et un fort chevauchement entre les observations.
 
@@ -256,10 +256,12 @@ score de silhouette faible (0,17), suggérant une séparation imparfaite des
 groupes. Les individus ne se distinguent pas nettement en fonction des variables étudiées, 
 ce qui remet en question leur pertinence pour la prédiction du comportement médical.
 
-De plus, le modèle supervisé testé a affiché un taux d'erreur élevé (63.29787 % / 54.03509 %), confirmant 
+De plus, le modèle supervisé testé a affiché un taux d'erreur élevé (66.13475 % / 51.92982 %), confirmant 
 la difficulté à établir une relation fiable entre les caractéristiques des patients et 
 leur fréquence de consultation. Aucune variable ne semble exercer une influence prédictive 
-suffisante pour permettre une classification efficace.
+suffisante pour permettre une classification efficace. Additionnellement, le fait qu'un données d'entrainement 
+propotionnelles, le taux d'erreur soit proche de 2/3 semble souligner d'autant plus une totale absence de lien, 
+car c'est ce qu'on pourrait esperer en cas de prédiction strictement aléatoire.
 
 En conclusion, les résultats indiquent que les données disponibles ne sont pas assez 
 discriminantes pour prédire avec précision le nombre de visites médicales. Des variables 
