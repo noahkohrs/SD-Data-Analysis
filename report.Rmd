@@ -4,6 +4,10 @@ author: "Anastasios Tsiompanidis et Noah Kohrs"
 date: "`r Sys.Date()`"
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = TRUE)
+```
+
 # National Poll on Healthy Aging (NPHA)
 
 ## Auteurs du Projet
@@ -105,6 +109,17 @@ boxplot(split(npha$Number.of.Doctors.Visited, npha$Mental.Health), main = "Numbe
 boxplot(split(npha$Number.of.Doctors.Visited, npha$Dental.Health), main = "Number of Doctors Visited by Dental Health")
 ```
 
+### Interprétation des boxplots
+Les boxplots révèlent des tendances intéressantes mais ne montrent pas de différences marquées 
+entre les groupes. On observe une légère augmentation du nombre de consultations médicales chez 
+les individus ayant une moins bonne santé physique et mentale, bien que la variabilité reste 
+importante. De même, ceux ayant une mauvaise santé dentaire semblent consulter plus fréquemment, 
+mais l'écart entre les groupes reste modéré. Concernant l'emploi, les personnes retraitées ou 
+sans emploi semblent légèrement plus enclines à consulter un médecin que celles en activité, bien 
+que la différence ne soit pas significative. Globalement, ces distributions suggèrent des tendances 
+faibles mais ne permettent pas d'identifier des facteurs prédictifs forts du nombre de consultations 
+médicales.
+
 ## 3- Classification non supervisée :
 On effectue une analyse de regroupement hiérarchique et un clustering PAM pour segmenter 
 les données sans inclure la variable cible, puis on visualise les résultats de chaque méthode.
@@ -155,11 +170,11 @@ On a observé qu'aucune classe ne justifierait un sous-échantillonage pour maxi
 
 indices_1 <- which(npha$Number.of.Doctors.Visited == "0-1")
 indices_2 <- which(npha$Number.of.Doctors.Visited == "2-3")
-indices_3 <- which(npha$Number.of.Doctors.Visited == "4 or more")
+indices_3 <- which(npha$Number.of.Doctors.Visited == "4+")
 
-sample_1 <- sample(indices_1, round(0.6 * length(indices_1), digits = 0))
-sample_2 <- sample(indices_2, round(0.6 * length(indices_2), digits = 0))
-sample_3 <- sample(indices_3, round(0.6 * length(indices_3), digits = 0))
+sample_1 <- sample(indices_1, 50)
+sample_2 <- sample(indices_2, 50)
+sample_3 <- sample(indices_3, 50)
 sub <- c(sample_1, sample_2, sample_3)
 ```
 
@@ -189,3 +204,64 @@ correctes aux résultats totaux, puis on l'affiche sous forme de pourcentage.
 err <- (1 - sum(diag(res)) / sum(res)) * 100
 cat("Le taux d'erreur est de :", err, "%\n")
 ```
+
+### Impact de l'équilibre des classes sur la performance du modèle
+
+Au départ, l'entraînement du modèle a été réalisé en sélectionnant un nombre fixe 
+d'observations par classe afin de garantir une répartition équilibrée entre les 
+catégories. Cette approche permet d'éviter qu'une classe majoritaire domine l'apprentissage, 
+ce qui pourrait biaiser les prédictions et réduire la capacité du modèle à identifier 
+correctement les classes moins représentées.
+
+Cependant, cette méthode ne reflète pas la distribution réelle des données. C'est 
+pourquoi nous avons testé une seconde approche où chaque classe est échantillonnée 
+selon un même pourcentage de ses observations totales. Cette méthode permet au 
+modèle d'apprendre à partir d'une répartition plus représentative de la réalité, ce 
+qui peut améliorer sa capacité de généralisation. Comparer ces deux approches permet 
+d'évaluer si un équilibre artificiel améliore la précision ou si une répartition 
+proportionnelle aux données initiales est plus pertinente.
+
+```{r}
+indices_1 <- which(npha$Number.of.Doctors.Visited == "0-1")
+indices_2 <- which(npha$Number.of.Doctors.Visited == "2-3")
+indices_3 <- which(npha$Number.of.Doctors.Visited == "4+")
+
+sample_1 <- sample(indices_1, round(0.6 * length(indices_1), digits = 0))
+sample_2 <- sample(indices_2, round(0.6 * length(indices_2), digits = 0))
+sample_3 <- sample(indices_3, round(0.6 * length(indices_3), digits = 0))
+sub <- c(sample_1, sample_2, sample_3)
+
+fit <- rpart(npha$Number.of.Doctors.Visited ~ ., data = npha, subset = sub)
+res <- table(predict(fit, npha[-sub, ], type = "class"), npha[-sub, "Number.of.Doctors.Visited"])
+
+err <- (1 - sum(diag(res)) / sum(res)) * 100
+cat("Le taux d'erreur est de :", err, "%\n")
+```
+
+Les résultats montrent que l'entraînement avec un échantillonnage proportionnel 
+réduit significativement le taux d'erreur par rapport à un échantillonnage fixe. 
+Cela confirme que respecter la distribution naturelle des données permet au modèle 
+de mieux généraliser et d'éviter un apprentissage biaisé par une répartition 
+artificielle des classes.
+
+## Conclusion:
+
+Les résultats de l'étude montrent que les variables analysées n'expliquent pas 
+suffisamment le nombre de consultations médicales des personnes âgées. Les tentatives 
+de classification ont révélé une segmentation peu claire des groupes, avec une 
+faible cohésion interne et un fort chevauchement entre les observations.
+
+L'analyse des clusters a indiqué une variance expliquée limitée (31,54 %) et un 
+score de silhouette faible (0,17), suggérant une séparation imparfaite des 
+groupes. Les individus ne se distinguent pas nettement en fonction des variables étudiées, 
+ce qui remet en question leur pertinence pour la prédiction du comportement médical.
+
+De plus, le modèle supervisé testé a affiché un taux d'erreur élevé (63.29787 % / 54.03509 %), confirmant 
+la difficulté à établir une relation fiable entre les caractéristiques des patients et 
+leur fréquence de consultation. Aucune variable ne semble exercer une influence prédictive 
+suffisante pour permettre une classification efficace.
+
+En conclusion, les résultats indiquent que les données disponibles ne sont pas assez 
+discriminantes pour prédire avec précision le nombre de visites médicales. Des variables 
+supplémentaires ou une approche différente seraient nécessaires pour améliorer la capacité 
+prédictive des modèles.
